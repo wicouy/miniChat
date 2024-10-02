@@ -84,7 +84,7 @@ function App() {
         <label>
           Modelo:
           <select value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value="gemma-2-2b-instruct">Gemma 2.2B Instruct</option>
+            <option value="gemma-2-2b-instruct">Gemma 2.2B</option>
           </select>
         </label>
         <label>
