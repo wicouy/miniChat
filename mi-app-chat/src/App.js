@@ -7,6 +7,12 @@ function App() {
   const [loading, setLoading] = useState(false); // Indicador de carga
   const [error, setError] = useState(""); // Manejo de errores
 
+  // Estado para los parámetros
+  const [temperature, setTemperature] = useState(0.15);
+  const [maxTokens, setMaxTokens] = useState(250);
+  const [seed, setSeed] = useState(400);
+  const [model, setModel] = useState("gemma-2-2b-instruct"); // Estado para el modelo
+
   // Función para leer el contenido del archivo prompt.txt
   useEffect(() => {
     fetch("/prompt.txt")
@@ -36,14 +42,14 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemma-2-2b-instruct",
+          model, // Usar el modelo seleccionado
           messages: [
             { role: "system", content: "Responde en español" },
             { role: "user", content: userMessage }, // Usar el mensaje del usuario
           ],
-          temperature: 0.15,
-          max_tokens: 250,
-          seed: 400,
+          temperature: parseFloat(temperature), // Usar el valor de estado de temperature
+          max_tokens: parseInt(maxTokens), // Usar el valor de estado de max_tokens
+          seed: parseInt(seed), // Usar el valor de estado de seed
           stream: false,
         }),
       });
@@ -72,6 +78,44 @@ function App() {
         placeholder="Escribe tu mensaje aquí..."
         rows="4"
       />
+
+      {/* Inputs para los parámetros */}
+      <div className="parameters">
+        <label>
+          Modelo:
+          <select value={model} onChange={(e) => setModel(e.target.value)}>
+            <option value="gemma-2-2b-instruct">Gemma 2.2B Instruct</option>
+          </select>
+        </label>
+        <label>
+          Temperature:
+          <input
+            type="number"
+            value={temperature}
+            onChange={(e) => setTemperature(e.target.value)}
+            step="0.01"
+            min="0"
+            max="1"
+          />
+        </label>
+        <label>
+          Max Tokens:
+          <input
+            type="number"
+            value={maxTokens}
+            onChange={(e) => setMaxTokens(e.target.value)}
+            min="1"
+          />
+        </label>
+        <label>
+          Seed:
+          <input
+            type="number"
+            value={seed}
+            onChange={(e) => setSeed(e.target.value)}
+          />
+        </label>
+      </div>
 
       {/* Botón para enviar el mensaje */}
       <button onClick={handleFetch} disabled={loading}>

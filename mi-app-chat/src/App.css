@@ -30,12 +30,13 @@ body {
 h1 {
   color: #f0db4f;
   font-size: 24px;
+  margin-bottom: 20px;
 }
 
 /* Estilos para la caja de texto con padding */
 textarea {
   width: 600px;
-  height: 300px;
+  height: 200px; /* Ajusté la altura para que encaje mejor */
   padding: 15px;
   border-radius: 5px;
   border: none;
@@ -45,6 +46,40 @@ textarea {
   margin-bottom: 20px;
   box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
   resize: none; /* Previene que el usuario cambie el tamaño del textarea */
+}
+
+/* Estilos para el contenedor de los parámetros */
+.parameters {
+  display: flex;
+  justify-content: space-between;
+  width: 600px; /* Alinea con el ancho del textarea */
+  margin-bottom: 20px;
+}
+
+.parameters label {
+  display: flex;
+  flex-direction: column;
+  color: #f0db4f;
+  font-size: 14px;
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+.parameters input,
+.parameters select {
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  font-size: 14px;
+  background-color: #333;
+  color: #fff;
+  margin-top: 5px;
+  width: 100px; /* Ajusta el ancho de los campos de entrada */
+  text-align: center;
+}
+
+.parameters select {
+  width: 150px; /* Ajustar un poco más para el select del modelo */
 }
 
 /* Estilos para el botón */
@@ -75,7 +110,7 @@ button:disabled {
   white-space: pre-wrap;
   max-height: 200px; /* Ajusta la altura máxima */
   width: 100%;
-  max-width: 650px;
+  max-width: 600px; /* Ajusta el ancho al contenedor */
   overflow-y: scroll; /* Fuerza la barra de desplazamiento vertical */
   border: 1px solid #555; /* Añadir un borde para destacar la caja de respuesta */
   box-sizing: border-box; /* Asegura que el padding esté dentro de los límites */
