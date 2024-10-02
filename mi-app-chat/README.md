@@ -1,70 +1,98 @@
-# Getting Started with Create React App
+# Chat API Interface
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Este proyecto es una aplicación de React que interactúa con una API de chat basada en un modelo de lenguaje. La interfaz permite al usuario enviar un mensaje y obtener una respuesta desde la API, con parámetros configurables como el modelo, temperatura, cantidad máxima de tokens, y semilla.
 
-## Available Scripts
+## Características
 
-In the project directory, you can run:
+- **Interfaz limpia y sencilla** para enviar mensajes a una API de chat.
+- **Lectura inicial** de un archivo `prompt.txt` que precarga el mensaje en el campo de texto.
+- **Parámetros configurables**:
+  - Modelo
+  - Temperatura
+  - Máximo de tokens
+  - Semilla
+- **Respuesta de la API** mostrada en tiempo real.
+- **Manejo de errores y carga** con mensajes apropiados para el usuario.
 
-### `npm start`
+## Estructura del Proyecto
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```
+├── public/
+│   ├── index.html
+│   └── prompt.txt
+├── src/
+│   ├── App.css         # Estilos para la aplicación
+│   ├── App.js          # Componente principal de React
+│   └── index.js        # Punto de entrada del proyecto
+├── README.md           # Este archivo
+└── package.json        # Dependencias del proyecto y scripts
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Instalación
 
-### `npm test`
+1. Clona este repositorio:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+   ```bash
+   git clone https://github.com/usuario/proyecto-chat-api.git
+   ```
 
-### `npm run build`
+2. Accede al directorio del proyecto:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+   ```bash
+   cd proyecto-chat-api
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+3. Instala las dependencias:
+   ```bash
+   npm install
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Uso
 
-### `npm run eject`
+1. Crea un archivo `prompt.txt` en el directorio `public/` para que su contenido se precargue en el campo de texto cuando se inicie la aplicación.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. Ejecuta la aplicación en modo desarrollo:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+   ```bash
+   npm start
+   ```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+3. Abre [http://localhost:3000](http://localhost:3000) para ver la aplicación en el navegador.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+4. Configura los parámetros de la API (modelo, temperatura, tokens, y semilla) directamente en la interfaz antes de enviar la solicitud.
 
-## Learn More
+## Parámetros
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- **Modelo**: Selecciona el modelo de lenguaje que deseas usar para la solicitud.
+- **Temperature**: Controla la aleatoriedad en las respuestas. Valores bajos hacen que el modelo sea más determinista.
+- **Max Tokens**: Define la cantidad máxima de tokens (palabras) permitidos en la respuesta.
+- **Seed**: Establece una semilla para generar respuestas consistentes.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Personalización
 
-### Code Splitting
+Puedes modificar el contenido de los parámetros por defecto y las opciones disponibles en el archivo `App.js`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Estilos
 
-### Analyzing the Bundle Size
+Los estilos de la aplicación se definen en el archivo `App.css`, con un esquema de colores de fondo oscuro para mejorar la presentación y legibilidad.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Contribuir
 
-### Making a Progressive Web App
+1. Haz un fork del repositorio.
+2. Crea una nueva rama para tus cambios:
+   ```bash
+   git checkout -b nueva-funcionalidad
+   ```
+3. Realiza tus modificaciones y confirma los cambios:
+   ```bash
+   git commit -m "Añadida nueva funcionalidad"
+   ```
+4. Envía tus cambios a tu fork:
+   ```bash
+   git push origin nueva-funcionalidad
+   ```
+5. Crea un pull request.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Licencia
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Este proyecto está licenciado bajo la [MIT License](LICENSE).
