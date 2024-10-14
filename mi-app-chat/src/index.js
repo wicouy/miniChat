@@ -1,17 +1,23 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React from "react";
+import ReactDOM from "react-dom/client"; // Asegúrate de que esté bien importado
+import "./index.css";
+import App from "./App"; // Verifica que App.js esté en la misma carpeta
+import reportWebVitals from "./reportWebVitals";
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+console.log("WebLLM cargado:", webllm);
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  console.error("No se encontró el elemento con id 'root'.");
+} else {
+  console.log("Elemento 'root' encontrado, montando React...");
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App webllm={webllm} />
+    </React.StrictMode>
+  );
+}
+
 reportWebVitals();

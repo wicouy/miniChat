@@ -1,117 +1,105 @@
-/* Estilos generales para fondo oscuro y mejor presentación */
-body {
-  background-color: #2e2e2e;
-  color: #e0e0e0;
+body,
+html {
   font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  padding: 10px 20px;
 }
 
-/* Contenedor principal centrado */
-.container {
-  background-color: #1f1f1f;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  width: 800px;
-  max-width: 100%;
-  text-align: center;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* Título */
-h1 {
-  color: #f0db4f;
-  font-size: 24px;
-  margin-bottom: 20px;
-}
-
-/* Estilos para la caja de texto con padding */
-textarea {
-  width: 600px;
-  height: 200px; /* Ajusté la altura para que encaje mejor */
-  padding: 15px;
-  border-radius: 5px;
-  border: none;
-  font-size: 16px;
-  background-color: #333;
-  color: #fff;
-  margin-bottom: 20px;
-  box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
-  resize: none; /* Previene que el usuario cambie el tamaño del textarea */
-}
-
-/* Estilos para el contenedor de los parámetros */
-.parameters {
+.download-container {
   display: flex;
   justify-content: space-between;
-  width: 600px; /* Alinea con el ancho del textarea */
   margin-bottom: 20px;
 }
 
-.parameters label {
+#download-status {
+  border: solid 1px black;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 10px;
+}
+
+.chat-container {
+  height: 400px;
+  width: 100%;
+  border: 2px solid black;
   display: flex;
   flex-direction: column;
-  color: #f0db4f;
-  font-size: 14px;
-  margin-right: 10px;
-  margin-left: 10px;
 }
 
-.parameters input,
-.parameters select {
-  padding: 8px;
-  border-radius: 5px;
-  border: none;
-  font-size: 14px;
-  background-color: #333;
+.chat-box {
+  overflow-y: scroll;
+  background-color: #c3c3c3;
+  border: 1px solid #ccc;
+  padding: 5px;
+  flex: 1 1;
+}
+
+.chat-stats {
+  background-color: #d3eceb;
+  flex: 0 0;
+  padding: 10px;
+  font-size: 0.75rem;
+}
+
+.message-container {
+  width: 100%;
+  display: flex;
+}
+
+.message {
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.message-container.user {
+  justify-content: end;
+}
+
+.message-container.assistant {
+  justify-content: start;
+}
+
+.message-container.user .message {
+  background: #007bff;
   color: #fff;
-  margin-top: 5px;
-  width: 100px; /* Ajusta el ancho de los campos de entrada */
-  text-align: center;
 }
 
-.parameters select {
-  width: 150px; /* Ajustar un poco más para el select del modelo */
-}
-
-/* Estilos para el botón */
-button {
-  background-color: #f0db4f;
+.message-container.assistant .message {
+  background: #f1f0f0;
   color: #333;
+}
+
+.chat-input-container {
+  min-height: 40px;
+  flex: 0 0;
+  display: flex;
+}
+
+#user-input {
+  width: 70%;
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 25%;
+  padding: 10px;
   border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
   cursor: pointer;
-  font-size: 16px;
-  margin-bottom: 20px;
 }
 
 button:disabled {
-  background-color: #ccc;
+  background-color: lightgray;
   cursor: not-allowed;
 }
 
-/* Div de respuesta con barra de desplazamiento */
-.response {
-  background-color: #333;
-  padding: 15px;
-  border-radius: 5px;
-  color: #fff;
-  margin-top: 20px;
-  text-align: left;
-  white-space: pre-wrap;
-  max-height: 200px; /* Ajusta la altura máxima */
-  width: 100%;
-  max-width: 600px; /* Ajusta el ancho al contenedor */
-  overflow-y: scroll; /* Fuerza la barra de desplazamiento vertical */
-  border: 1px solid #555; /* Añadir un borde para destacar la caja de respuesta */
-  box-sizing: border-box; /* Asegura que el padding esté dentro de los límites */
+button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.hidden {
+  display: none;
 }
