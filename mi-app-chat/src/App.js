@@ -25,8 +25,8 @@ function App({ webllm }) {
   const [repeatPenaltyEnabled, setRepeatPenaltyEnabled] = useState(true);
   const [minPSamplingEnabled, setMinPSamplingEnabled] = useState(true);
 
-  // Estado para almacenar la ubicación de descarga del modelo
-  const [downloadLocation, setDownloadLocation] = useState("");
+  // Estado para indicar el estado de la descarga del modelo
+  const [downloadStatus, setDownloadStatus] = useState("");
 
   const userInputRef = useRef(null);
   const chatBoxRef = useRef(null);
@@ -62,7 +62,7 @@ function App({ webllm }) {
   const initializeWebLLMEngine = async () => {
     try {
       setLoadingStatus("Descargando modelo...");
-      const selectedModel = modelSelectionRef.current.value;
+      setDownloadStatus(`Descargando: ${selectedModel}`);
 
       // Configuración dinámica con más parámetros
       const config = {
@@ -74,20 +74,17 @@ function App({ webllm }) {
         min_p: minPSamplingEnabled ? minPSampling : null,
       };
 
-      // Obtén la ruta real desde el servidor (o una simulada)
-      const downloadPath = `/path/to/download/${selectedModel}`;
-      setDownloadLocation(downloadPath);
-
       console.log("Iniciando la descarga del modelo:", selectedModel);
-      console.log("Descargando en:", downloadPath);
 
       await engine.current.reload(selectedModel, config);
 
       setLoadingStatus("Modelo descargado correctamente");
+      setDownloadStatus(`Modelo descargado: ${selectedModel}`);
       setIsModelLoaded(true);
     } catch (error) {
       console.error("Error al inicializar el motor:", error);
       setLoadingStatus("Error al descargar el modelo");
+      setDownloadStatus("Error en la descarga del modelo");
     }
   };
 
@@ -193,11 +190,11 @@ function App({ webllm }) {
         <p>{loadingStatus}</p>
       </div>
 
-      {/* Mostrar la ubicación donde se está descargando el modelo */}
-      <div className="download-location">
+      {/* Mostrar el estado de descarga del modelo */}
+      <div className="download-status">
         <p>
-          <strong>Ubicación de descarga del modelo:</strong>{" "}
-          {downloadLocation || "No descargado"}
+          <strong>Estado de descarga del modelo:</strong>{" "}
+          {downloadStatus || "No descargado"}
         </p>
       </div>
 
