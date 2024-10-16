@@ -5,7 +5,9 @@ function App({ webllm }) {
   const [messages, setMessages] = useState([
     { content: "You are a helpful AI agent helping users.", role: "system" },
   ]);
-  const [selectedModel, setSelectedModel] = useState(""); // El modelo no está hardcodeado
+  const [selectedModel, setSelectedModel] = useState(
+    "TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC"
+  ); // Modelo por defecto
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
 
@@ -35,16 +37,19 @@ function App({ webllm }) {
     if (modelSelectionRef.current) {
       const models = webllm.prebuiltAppConfig.model_list;
       if (models.length > 0) {
-        setSelectedModel(models[0].model_id); // Inicializa con el primer modelo disponible
+        // Rellena el selector de modelos
+        models.forEach((model) => {
+          const option = document.createElement("option");
+          option.value = model.model_id;
+          option.textContent = model.model_id;
+          modelSelectionRef.current.appendChild(option);
+        });
+
+        // Establece el valor del selector en el modelo por defecto
+        modelSelectionRef.current.value = selectedModel;
       }
-      models.forEach((model) => {
-        const option = document.createElement("option");
-        option.value = model.model_id;
-        option.textContent = model.model_id;
-        modelSelectionRef.current.appendChild(option);
-      });
     }
-  }, [webllm]);
+  }, [webllm, selectedModel]);
 
   const initializeWebLLMEngine = async () => {
     try {
