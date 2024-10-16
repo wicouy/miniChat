@@ -5,17 +5,22 @@ function App({ webllm }) {
   const [messages, setMessages] = useState([
     { content: "You are a helpful AI agent helping users.", role: "system" },
   ]);
-  const [selectedModel, setSelectedModel] = useState(
-    "TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC"
-  ); // Modelo por defecto
+  const [selectedModel, setSelectedModel] = useState("gemma-2b-it-q4f16_1-MLC"); // Modelo por defecto
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
 
   // Estados para los parámetros del modelo
   const [temperature, setTemperature] = useState(0.15);
-  const [topP, setTopP] = useState(1);
+  const [topP, setTopP] = useState(0.95);
   const [maxTokens, setMaxTokens] = useState(100);
-  const [frequencyPenalty, setFrequencyPenalty] = useState(0.0);
+  const [frequencyPenalty, setFrequencyPenalty] = useState(1.1);
+  const [topKSampling, setTopKSampling] = useState(40);
+  const [minPSampling, setMinPSampling] = useState(0.05);
+
+  // Parámetros con checkbox
+  const [topPSamplingEnabled, setTopPSamplingEnabled] = useState(true);
+  const [repeatPenaltyEnabled, setRepeatPenaltyEnabled] = useState(true);
+  const [minPSamplingEnabled, setMinPSamplingEnabled] = useState(true);
 
   // Estado para almacenar la ubicación de descarga del modelo
   const [downloadLocation, setDownloadLocation] = useState("");
@@ -61,20 +66,22 @@ function App({ webllm }) {
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
-        frequency_penalty: frequencyPenalty,
+        frequency_penalty: repeatPenaltyEnabled ? frequencyPenalty : null,
+        top_k: topKSampling,
+        min_p: minPSamplingEnabled ? minPSampling : null,
       };
 
-      // Establecer la ubicación donde se descargará el modelo (puede ser dinámica)
-      const downloadPath = `/models/${selectedModel}`;
-      setDownloadLocation(downloadPath); // Actualizar el estado con la ubicación
+      // Obtén la ruta real desde el servidor (o una simulada)
+      const downloadPath = `/path/to/download/${selectedModel}`;
+      setDownloadLocation(downloadPath);
 
       console.log("Iniciando la descarga del modelo:", selectedModel);
-      console.log("Descargando en:", downloadPath); // Mostrar la ubicación en la consola
+      console.log("Descargando en:", downloadPath);
 
       await engine.current.reload(selectedModel, config);
 
       setLoadingStatus("Modelo descargado correctamente");
-      setIsModelLoaded(true); // Habilitar botón de enviar
+      setIsModelLoaded(true);
     } catch (error) {
       console.error("Error al inicializar el motor:", error);
       setLoadingStatus("Error al descargar el modelo");
@@ -205,7 +212,12 @@ function App({ webllm }) {
           />
         </label>
         <label>
-          Top P:
+          Top P Sampling:
+          <input
+            type="checkbox"
+            checked={topPSamplingEnabled}
+            onChange={(e) => setTopPSamplingEnabled(e.target.checked)}
+          />
           <input
             type="number"
             value={topP}
@@ -213,6 +225,51 @@ function App({ webllm }) {
             step="0.01"
             min="0"
             max="1"
+            disabled={!topPSamplingEnabled}
+          />
+        </label>
+        <label>
+          Top K Sampling:
+          <input
+            type="number"
+            value={topKSampling}
+            onChange={(e) => setTopKSampling(parseInt(e.target.value, 10))}
+            min="1"
+            max="100"
+          />
+        </label>
+        <label>
+          Repeat Penalty:
+          <input
+            type="checkbox"
+            checked={repeatPenaltyEnabled}
+            onChange={(e) => setRepeatPenaltyEnabled(e.target.checked)}
+          />
+          <input
+            type="number"
+            value={frequencyPenalty}
+            onChange={(e) => setFrequencyPenalty(parseFloat(e.target.value))}
+            step="0.01"
+            min="1"
+            max="2"
+            disabled={!repeatPenaltyEnabled}
+          />
+        </label>
+        <label>
+          Min P Sampling:
+          <input
+            type="checkbox"
+            checked={minPSamplingEnabled}
+            onChange={(e) => setMinPSamplingEnabled(e.target.checked)}
+          />
+          <input
+            type="number"
+            value={minPSampling}
+            onChange={(e) => setMinPSampling(parseFloat(e.target.value))}
+            step="0.01"
+            min="0"
+            max="1"
+            disabled={!minPSamplingEnabled}
           />
         </label>
         <label>
@@ -223,17 +280,6 @@ function App({ webllm }) {
             onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
             min="1"
             max="1000"
-          />
-        </label>
-        <label>
-          Frequency Penalty:
-          <input
-            type="number"
-            value={frequencyPenalty}
-            onChange={(e) => setFrequencyPenalty(parseFloat(e.target.value))}
-            step="0.01"
-            min="0"
-            max="2"
           />
         </label>
       </div>
