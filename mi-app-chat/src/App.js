@@ -17,8 +17,8 @@ function App({ webllm }) {
   const [topP, setTopP] = useState(0.95);
   const [maxTokens, setMaxTokens] = useState(100);
   const [frequencyPenalty, setFrequencyPenalty] = useState(1.1);
-  const [topKSampling, setTopKSampling] = useState(40);
-  const [minPSampling, setMinPSampling] = useState(0.05);
+  const [topKSampling, setTopKSampling] = useState(30);
+  const [minPSampling, setMinPSampling] = useState(0.06);
 
   // Parámetros con checkbox
   const [topPSamplingEnabled, setTopPSamplingEnabled] = useState(true);
