@@ -2,8 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import "./App.css";
 
 function App({ webllm }) {
+  const preprompt = "You are a helpful AI agent helping users.";
+  const bot_role = "assistant";
+
   const [messages, setMessages] = useState([
-    { content: "You are a helpful AI agent helping users.", role: "system" },
+    { content: preprompt, role: bot_role },
   ]);
   const [selectedModel, setSelectedModel] = useState("gemma-2b-it-q4f16_1-MLC"); // Modelo por defecto
   const [isModelLoaded, setIsModelLoaded] = useState(false);
@@ -99,7 +102,7 @@ function App({ webllm }) {
     userInputRef.current.value = "";
     userInputRef.current.placeholder = "Generando...";
 
-    const aiMessage = { content: "typing...", role: "assistant" };
+    const aiMessage = { content: "typing...", role: bot_role };
     appendMessage(aiMessage);
 
     streamingGenerating(
@@ -150,7 +153,7 @@ function App({ webllm }) {
     newMessage.classList.add("message");
     newMessage.textContent = message.content;
 
-    container.classList.add(message.role === "user" ? "user" : "assistant");
+    container.classList.add(message.role === "user" ? "user" : bot_role);
     container.appendChild(newMessage);
     chatBox.appendChild(container);
     chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final del chat
