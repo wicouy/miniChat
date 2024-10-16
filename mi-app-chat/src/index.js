@@ -1,9 +1,9 @@
 import React from "react";
-import ReactDOM from "react-dom/client"; // Asegúrate de que esté bien importado
+import ReactDOM from "react-dom/client";
 import "./index.css";
-import App from "./App"; // Verifica que App.js esté en la misma carpeta
+import App from "./App";
 import reportWebVitals from "./reportWebVitals";
-import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+import * as webllm from "@mlc-ai/web-llm"; // IMPORTANTE: npm install @mlc-ai/web-llm
 
 console.log("WebLLM cargado:", webllm);
 

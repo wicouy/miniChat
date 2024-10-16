@@ -5,108 +5,132 @@ function App({ webllm }) {
   const [messages, setMessages] = useState([
     { content: "You are a helpful AI agent helping users.", role: "system" },
   ]);
-  const [selectedModel, setSelectedModel] = useState(
-    "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC"
-  );
+  const [selectedModel, setSelectedModel] = useState(""); // El modelo no está hardcodeado
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("");
 
-  const engine = useRef(null); // Usa useRef para almacenar la instancia del motor.
+  // Estados para los parámetros del modelo
+  const [temperature, setTemperature] = useState(0.15);
+  const [topP, setTopP] = useState(1);
+  const [maxTokens, setMaxTokens] = useState(100);
+  const [frequencyPenalty, setFrequencyPenalty] = useState(0.0);
+
+  // Estado para almacenar la ubicación de descarga del modelo
+  const [downloadLocation, setDownloadLocation] = useState("");
+
+  const userInputRef = useRef(null);
+  const chatBoxRef = useRef(null);
+  const modelSelectionRef = useRef(null);
+  const engine = useRef(null);
 
   useEffect(() => {
     // Inicializa el motor WebLLM
     engine.current = new webllm.MLCEngine();
     engine.current.setInitProgressCallback((report) => {
       console.log("Progreso de inicialización:", report.progress);
-      document.getElementById("download-status").textContent = report.text;
+      setLoadingStatus(report.text); // Actualiza el estado para mostrar el progreso
     });
 
     // Configura el selector de modelos
-    const modelSelection = document.getElementById("model-selection");
-    if (modelSelection) {
-      webllm.prebuiltAppConfig.model_list.forEach((model) => {
+    if (modelSelectionRef.current) {
+      const models = webllm.prebuiltAppConfig.model_list;
+      if (models.length > 0) {
+        setSelectedModel(models[0].model_id); // Inicializa con el primer modelo disponible
+      }
+      models.forEach((model) => {
         const option = document.createElement("option");
         option.value = model.model_id;
         option.textContent = model.model_id;
-        modelSelection.appendChild(option);
+        modelSelectionRef.current.appendChild(option);
       });
-      modelSelection.value = selectedModel;
-    } else {
-      console.error("Elemento 'model-selection' no encontrado.");
     }
+  }, [webllm]);
 
-    // Configura los listeners para los botones
-    document.getElementById("download").addEventListener("click", () => {
-      initializeWebLLMEngine().then(() => {
-        document.getElementById("send").disabled = false;
-      });
-    });
-
-    document.getElementById("send").addEventListener("click", onMessageSend);
-  }, [webllm, selectedModel]);
-
-  async function initializeWebLLMEngine() {
+  const initializeWebLLMEngine = async () => {
     try {
-      document.getElementById("download-status").classList.remove("hidden");
-      const selectedModel = document.getElementById("model-selection").value;
-      const config = { temperature: 0.15, top_p: 1 };
+      setLoadingStatus("Descargando modelo...");
+      const selectedModel = modelSelectionRef.current.value;
+
+      // Configuración dinámica con más parámetros
+      const config = {
+        temperature,
+        top_p: topP,
+        max_tokens: maxTokens,
+        frequency_penalty: frequencyPenalty,
+      };
+
+      // Establecer la ubicación donde se descargará el modelo (puede ser dinámica)
+      const downloadPath = `/models/${selectedModel}`;
+      setDownloadLocation(downloadPath); // Actualizar el estado con la ubicación
 
       console.log("Iniciando la descarga del modelo:", selectedModel);
+      console.log("Descargando en:", downloadPath); // Mostrar la ubicación en la consola
+
       await engine.current.reload(selectedModel, config);
 
-      document.getElementById("download-status").textContent =
-        "Modelo descargado correctamente";
+      setLoadingStatus("Modelo descargado correctamente");
+      setIsModelLoaded(true); // Habilitar botón de enviar
     } catch (error) {
       console.error("Error al inicializar el motor:", error);
+      setLoadingStatus("Error al descargar el modelo");
     }
-  }
+  };
 
-  function onMessageSend() {
-    const input = document.getElementById("user-input").value.trim();
+  const onMessageSend = () => {
+    const input = userInputRef.current.value.trim();
     if (input.length === 0) return;
 
     const userMessage = { content: input, role: "user" };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     appendMessage(userMessage);
 
-    document.getElementById("user-input").value = "";
-    document.getElementById("user-input").placeholder = "Generando...";
+    userInputRef.current.value = "";
+    userInputRef.current.placeholder = "Generando...";
 
     const aiMessage = { content: "typing...", role: "assistant" };
     appendMessage(aiMessage);
 
-    async function streamingGenerating(messages, onUpdate, onFinish, onError) {
-      try {
-        let curMessage = "";
-        let usage;
+    streamingGenerating(
+      [...messages, userMessage],
+      updateLastMessage,
+      finishMessage,
+      handleError
+    );
+  };
 
-        console.log("Iniciando la generación de mensajes...");
+  async function streamingGenerating(messages, onUpdate, onFinish, onError) {
+    try {
+      let curMessage = "";
+      let usage;
 
-        const completion = await engine.current.chat.completions.create({
-          stream: true,
-          messages,
-          stream_options: { include_usage: true },
-        });
+      console.log("Iniciando la generación de mensajes...");
 
-        for await (const chunk of completion) {
-          const curDelta = chunk.choices[0]?.delta.content;
-          if (curDelta) {
-            curMessage += curDelta;
-            onUpdate(curMessage); // Actualiza el mensaje en tiempo real
-          }
-          if (chunk.usage) {
-            usage = chunk.usage;
-          }
+      const completion = await engine.current.chat.completions.create({
+        stream: true,
+        messages,
+        stream_options: { include_usage: true },
+      });
+
+      for await (const chunk of completion) {
+        const curDelta = chunk.choices[0]?.delta.content;
+        if (curDelta) {
+          curMessage += curDelta;
+          onUpdate(curMessage); // Actualiza el mensaje en tiempo real
         }
-
-        onFinish(curMessage, usage); // Llamada cuando la generación finaliza
-      } catch (error) {
-        onError(error); // Manejo de errores
-        console.error("Error durante la generación del mensaje:", error);
+        if (chunk.usage) {
+          usage = chunk.usage;
+        }
       }
+
+      onFinish(curMessage, usage); // Llamada cuando la generación finaliza
+    } catch (error) {
+      onError(error); // Manejo de errores
+      console.error("Error durante la generación del mensaje:", error);
     }
   }
 
-  function appendMessage(message) {
-    const chatBox = document.getElementById("chat-box");
+  const appendMessage = (message) => {
+    const chatBox = chatBoxRef.current;
     const container = document.createElement("div");
     container.classList.add("message-container");
 
@@ -118,29 +142,107 @@ function App({ webllm }) {
     container.appendChild(newMessage);
     chatBox.appendChild(container);
     chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final del chat
-  }
+  };
 
-  function updateLastMessage(content) {
-    const messageDoms = document
-      .getElementById("chat-box")
-      .querySelectorAll(".message");
+  const updateLastMessage = (content) => {
+    const chatBox = chatBoxRef.current;
+    const messageDoms = chatBox.querySelectorAll(".message");
     const lastMessageDom = messageDoms[messageDoms.length - 1];
     lastMessageDom.textContent = content;
-  }
+  };
+
+  const finishMessage = (content) => {
+    updateLastMessage(content);
+    if (userInputRef.current) {
+      userInputRef.current.placeholder = "Escribe un mensaje...";
+    }
+  };
+
+  const handleError = (error) => {
+    console.error("Error durante la generación del mensaje:", error);
+    if (userInputRef.current) {
+      userInputRef.current.placeholder = "Error al generar el mensaje";
+    }
+  };
 
   return (
     <div>
       <div className="download-container">
-        <select id="model-selection"></select>
-        <button id="download">Download</button>
-        <p id="download-status" className="hidden"></p>
+        <select
+          ref={modelSelectionRef}
+          onChange={(e) => setSelectedModel(e.target.value)}
+        ></select>
+        <button id="download" onClick={initializeWebLLMEngine}>
+          Descargar
+        </button>
+        <p>{loadingStatus}</p>
       </div>
+
+      {/* Mostrar la ubicación donde se está descargando el modelo */}
+      <div className="download-location">
+        <p>
+          <strong>Ubicación de descarga del modelo:</strong>{" "}
+          {downloadLocation || "No descargado"}
+        </p>
+      </div>
+
+      {/* Controles para ajustar los parámetros del modelo */}
+      <div className="param-container">
+        <label>
+          Temperature:
+          <input
+            type="number"
+            value={temperature}
+            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+            step="0.01"
+            min="0"
+            max="1"
+          />
+        </label>
+        <label>
+          Top P:
+          <input
+            type="number"
+            value={topP}
+            onChange={(e) => setTopP(parseFloat(e.target.value))}
+            step="0.01"
+            min="0"
+            max="1"
+          />
+        </label>
+        <label>
+          Max Tokens:
+          <input
+            type="number"
+            value={maxTokens}
+            onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
+            min="1"
+            max="1000"
+          />
+        </label>
+        <label>
+          Frequency Penalty:
+          <input
+            type="number"
+            value={frequencyPenalty}
+            onChange={(e) => setFrequencyPenalty(parseFloat(e.target.value))}
+            step="0.01"
+            min="0"
+            max="2"
+          />
+        </label>
+      </div>
+
       <div className="chat-container">
-        <div id="chat-box" className="chat-box"></div>
+        <div ref={chatBoxRef} className="chat-box"></div>
         <div className="chat-input-container">
-          <input type="text" id="user-input" placeholder="Type a message..." />
-          <button id="send" disabled>
-            Send
+          <input
+            type="text"
+            ref={userInputRef}
+            placeholder="Escribe un mensaje..."
+          />
+          <button id="send" onClick={onMessageSend} disabled={!isModelLoaded}>
+            Enviar
           </button>
         </div>
       </div>
