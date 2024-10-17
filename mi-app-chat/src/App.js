@@ -1,4 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+// src/App.js
+
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import "./App.css";
 
 function App({ webllm }) {
@@ -28,24 +30,65 @@ function App({ webllm }) {
   // Estado para indicar el estado de la descarga del modelo
   const [downloadStatus, setDownloadStatus] = useState("");
 
+  // Nuevo estado para elegir streaming o no
+  const [isStreaming, setIsStreaming] = useState(true);
+
   const userInputRef = useRef(null);
   const chatBoxRef = useRef(null);
   const modelSelectionRef = useRef(null);
-  const engine = useRef(null);
+  const workerRef = useRef(null);
+
+  // Definir las funciones de callback
+  const onUpdate = useCallback((content) => {
+    updateLastMessage(content);
+  }, []);
+
+  const onFinish = useCallback((content, usage) => {
+    finishMessage(content, usage);
+  }, []);
+
+  const onError = useCallback((error) => {
+    handleError(error);
+  }, []);
 
   useEffect(() => {
-    // Inicializa el motor WebLLM
-    engine.current = new webllm.MLCEngine();
-    engine.current.setInitProgressCallback((report) => {
-      console.log("Progreso de inicialización:", report.progress);
-      setLoadingStatus(report.text); // Actualiza el estado para mostrar el progreso
+    // Inicializar el Web Worker
+    const worker = new Worker(new URL("./worker.js", import.meta.url));
+    workerRef.current = worker;
+
+    // Escuchar mensajes del Web Worker
+    worker.addEventListener("message", (event) => {
+      const { type, data, status, message } = event.data;
+
+      if (status === "SUCCESS") {
+        setLoadingStatus(message);
+        setIsModelLoaded(true);
+      } else if (status === "ERROR") {
+        setLoadingStatus("Error al descargar el modelo");
+        setDownloadStatus(`Error: ${message}`);
+      }
+
+      if (type === "CHUNK") {
+        const curDelta = data.choices[0]?.delta?.content;
+        if (curDelta) {
+          onUpdate(curDelta);
+          appendOrUpdateMessage(curDelta);
+        }
+      } else if (type === "FINAL_MESSAGE") {
+        onFinish(data, null);
+      } else if (type === "ERROR") {
+        onError(new Error(message));
+      }
     });
 
-    // Configura el selector de modelos
+    // Inicializar el motor de lenguaje
+    initializeEngine();
+
+    // Configurar el selector de modelos
     if (modelSelectionRef.current) {
       const models = webllm.prebuiltAppConfig.model_list;
       if (models.length > 0) {
-        // Rellena el selector de modelos
+        // Rellenar el selector de modelos
         models.forEach((model) => {
           const option = document.createElement("option");
           option.value = model.model_id;
@@ -53,96 +96,135 @@ function App({ webllm }) {
           modelSelectionRef.current.appendChild(option);
         });
 
-        // Establece el valor del selector en el modelo por defecto
+        // Establecer el valor del selector en el modelo por defecto
         modelSelectionRef.current.value = selectedModel;
       }
     }
-  }, [webllm, selectedModel]);
 
-  const initializeWebLLMEngine = async () => {
-    try {
-      setLoadingStatus("Descargando modelo...");
-      setDownloadStatus(`Descargando: ${selectedModel}`);
+    // Limpieza al desmontar el componente
+    return () => {
+      worker.terminate();
+    };
+  }, [
+    onUpdate,
+    onFinish,
+    onError,
+    selectedModel,
+    temperature,
+    topP,
+    maxTokens,
+    frequencyPenalty,
+    topKSampling,
+    minPSampling,
+    repeatPenaltyEnabled,
+    minPSamplingEnabled,
+    webllm.prebuiltAppConfig.model_list,
+  ]);
 
-      // Configuración dinámica con más parámetros
-      const config = {
-        temperature,
-        top_p: topP,
-        max_tokens: maxTokens,
-        frequency_penalty: repeatPenaltyEnabled ? frequencyPenalty : null,
-        top_k: topKSampling,
-        min_p: minPSamplingEnabled ? minPSampling : null,
-      };
-
-      console.log("Iniciando la descarga del modelo:", selectedModel);
-
-      await engine.current.reload(selectedModel, config);
-
-      setLoadingStatus("Modelo descargado correctamente");
-      setDownloadStatus(`Modelo descargado: ${selectedModel}`);
-      setIsModelLoaded(true);
-    } catch (error) {
-      console.error("Error al inicializar el motor:", error);
-      setLoadingStatus("Error al descargar el modelo");
-      setDownloadStatus("Error en la descarga del modelo");
+  const initializeEngine = () => {
+    if (workerRef.current) {
+      workerRef.current.postMessage({
+        type: "INITIALIZE_ENGINE",
+        payload: {
+          model: selectedModel,
+          config: {
+            temperature,
+            top_p: topP,
+            max_tokens: maxTokens,
+            frequency_penalty: repeatPenaltyEnabled
+              ? frequencyPenalty
+              : undefined,
+            top_k: topKSampling,
+            min_p: minPSamplingEnabled ? minPSampling : undefined,
+          },
+        },
+      });
     }
   };
 
   const onMessageSend = () => {
-    const input = userInputRef.current.value.trim();
-    if (input.length === 0) return;
+    const input = userInputRef.current?.value.trim();
+    if (!input || input.length === 0) return;
 
     const userMessage = { content: input, role: "user" };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     appendMessage(userMessage);
 
-    userInputRef.current.value = "";
-    userInputRef.current.placeholder = "Generando...";
+    if (userInputRef.current) {
+      userInputRef.current.value = "";
+      userInputRef.current.placeholder = "Generando...";
+    }
 
     const aiMessage = { content: "typing...", role: bot_role };
     appendMessage(aiMessage);
 
-    streamingGenerating(
-      [...messages, userMessage],
-      updateLastMessage,
-      finishMessage,
-      handleError
-    );
+    if (isStreaming) {
+      streamingGenerating(
+        [...messages, userMessage],
+        onUpdate,
+        onFinish,
+        onError
+      );
+    } else {
+      nonStreamingGenerating([...messages, userMessage], onFinish, onError);
+    }
   };
 
   async function streamingGenerating(messages, onUpdate, onFinish, onError) {
-    try {
-      let curMessage = "";
-      let usage;
-
-      console.log("Iniciando la generación de mensajes...");
-
-      const completion = await engine.current.chat.completions.create({
-        stream: true,
-        messages,
-        stream_options: { include_usage: true },
-      });
-
-      for await (const chunk of completion) {
-        const curDelta = chunk.choices[0]?.delta.content;
-        if (curDelta) {
-          curMessage += curDelta;
-          onUpdate(curMessage); // Actualiza el mensaje en tiempo real
-        }
-        if (chunk.usage) {
-          usage = chunk.usage;
-        }
-      }
-
-      onFinish(curMessage, usage); // Llamada cuando la generación finaliza
-    } catch (error) {
-      onError(error); // Manejo de errores
-      console.error("Error durante la generación del mensaje:", error);
+    if (!workerRef.current) {
+      onError(new Error("Web Worker no está registrado"));
+      return;
     }
+
+    workerRef.current.postMessage({
+      type: "CREATE_COMPLETION",
+      payload: {
+        request: {
+          stream: true,
+          stream_options: { include_usage: true },
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+          top_p: topP,
+          frequency_penalty: repeatPenaltyEnabled
+            ? frequencyPenalty
+            : undefined,
+          top_k: topKSampling,
+          min_p: minPSamplingEnabled ? minPSampling : undefined,
+        },
+      },
+    });
+  }
+
+  async function nonStreamingGenerating(messages, onFinish, onError) {
+    if (!workerRef.current) {
+      onError(new Error("Web Worker no está registrado"));
+      return;
+    }
+
+    workerRef.current.postMessage({
+      type: "CREATE_COMPLETION",
+      payload: {
+        request: {
+          stream: false,
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+          top_p: topP,
+          frequency_penalty: repeatPenaltyEnabled
+            ? frequencyPenalty
+            : undefined,
+          top_k: topKSampling,
+          min_p: minPSamplingEnabled ? minPSampling : undefined,
+        },
+      },
+    });
   }
 
   const appendMessage = (message) => {
     const chatBox = chatBoxRef.current;
+    if (!chatBox) return;
+
     const container = document.createElement("div");
     container.classList.add("message-container");
 
@@ -156,17 +238,40 @@ function App({ webllm }) {
     chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final del chat
   };
 
-  const updateLastMessage = (content) => {
+  const appendOrUpdateMessage = (content) => {
     const chatBox = chatBoxRef.current;
-    const messageDoms = chatBox.querySelectorAll(".message");
-    const lastMessageDom = messageDoms[messageDoms.length - 1];
-    lastMessageDom.textContent = content;
+    if (!chatBox) return;
+
+    const messageContainers = chatBox.querySelectorAll(".message-container");
+    const lastContainer = messageContainers[messageContainers.length - 1];
+    const lastMessage = lastContainer.querySelector(".message");
+
+    if (lastMessage && lastContainer.classList.contains(bot_role)) {
+      lastMessage.textContent = content;
+    } else {
+      const aiMessage = { content, role: bot_role };
+      appendMessage(aiMessage);
+    }
   };
 
-  const finishMessage = (content) => {
+  const updateLastMessage = (content) => {
+    const chatBox = chatBoxRef.current;
+    if (!chatBox) return;
+
+    const messageDoms = chatBox.querySelectorAll(".message");
+    const lastMessageDom = messageDoms[messageDoms.length - 1];
+    if (lastMessageDom) {
+      lastMessageDom.textContent = content;
+    }
+  };
+
+  const finishMessage = (content, usage) => {
     updateLastMessage(content);
     if (userInputRef.current) {
       userInputRef.current.placeholder = "Escribe un mensaje...";
+    }
+    if (usage) {
+      console.log("Uso del modelo:", usage);
     }
   };
 
@@ -184,7 +289,7 @@ function App({ webllm }) {
           ref={modelSelectionRef}
           onChange={(e) => setSelectedModel(e.target.value)}
         ></select>
-        <button id="download" onClick={initializeWebLLMEngine}>
+        <button id="download" onClick={initializeEngine}>
           Descargar
         </button>
         <p>{loadingStatus}</p>
@@ -281,6 +386,18 @@ function App({ webllm }) {
             min="1"
             max="1000"
           />
+        </label>
+      </div>
+
+      {/* Opción para elegir entre Streaming y No-Streaming */}
+      <div className="options">
+        <label>
+          <input
+            type="checkbox"
+            checked={isStreaming}
+            onChange={(e) => setIsStreaming(e.target.checked)}
+          />
+          Habilitar Streaming
         </label>
       </div>
 
