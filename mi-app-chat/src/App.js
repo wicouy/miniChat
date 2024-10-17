@@ -5,77 +5,74 @@ function App({ webllm }) {
   const preprompt = "You are a helpful AI agent helping users.";
   const bot_role = "assistant";
 
+  // Estados iniciales
   const [messages, setMessages] = useState([
     { content: preprompt, role: bot_role },
   ]);
-  const [selectedModel, setSelectedModel] = useState("gemma-2b-it-q4f16_1-MLC"); // Modelo por defecto
+  const [selectedModel, setSelectedModel] = useState("gemma-2b-it-q4f16_1-MLC");
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
-
-  // Estados para los parámetros del modelo
-  const [temperature, setTemperature] = useState(0.15);
-  const [topP, setTopP] = useState(0.95);
-  const [maxTokens, setMaxTokens] = useState(100);
-  const [frequencyPenalty, setFrequencyPenalty] = useState(1.1);
-  const [topKSampling, setTopKSampling] = useState(30);
-  const [minPSampling, setMinPSampling] = useState(0.06);
-
-  // Parámetros con checkbox
-  const [topPSamplingEnabled, setTopPSamplingEnabled] = useState(true);
-  const [repeatPenaltyEnabled, setRepeatPenaltyEnabled] = useState(true);
-  const [minPSamplingEnabled, setMinPSamplingEnabled] = useState(true);
-
-  // Estado para indicar el estado de la descarga del modelo
   const [downloadStatus, setDownloadStatus] = useState("");
+  const [models, setModels] = useState([]);
+
+  // Estado para los parámetros del modelo
+  const [modelParams, setModelParams] = useState({
+    temperature: 0.15,
+    topP: 0.95,
+    maxTokens: 100,
+    frequencyPenalty: 1.1,
+    topKSampling: 30,
+    minPSampling: 0.06,
+    topPSamplingEnabled: true,
+    repeatPenaltyEnabled: true,
+    minPSamplingEnabled: true,
+  });
 
   const userInputRef = useRef(null);
   const chatBoxRef = useRef(null);
-  const modelSelectionRef = useRef(null);
   const engine = useRef(null);
 
+  // Inicializar el motor WebLLM y cargar modelos disponibles
   useEffect(() => {
-    // Inicializa el motor WebLLM
     engine.current = new webllm.MLCEngine();
     engine.current.setInitProgressCallback((report) => {
       console.log("Progreso de inicialización:", report.progress);
-      setLoadingStatus(report.text); // Actualiza el estado para mostrar el progreso
+      setLoadingStatus(report.text);
     });
 
-    // Configura el selector de modelos
-    if (modelSelectionRef.current) {
-      const models = webllm.prebuiltAppConfig.model_list;
-      if (models.length > 0) {
-        // Rellena el selector de modelos
-        models.forEach((model) => {
-          const option = document.createElement("option");
-          option.value = model.model_id;
-          option.textContent = model.model_id;
-          modelSelectionRef.current.appendChild(option);
-        });
+    const availableModels = webllm.prebuiltAppConfig.model_list || [];
+    setModels(availableModels);
+  }, [webllm]);
 
-        // Establece el valor del selector en el modelo por defecto
-        modelSelectionRef.current.value = selectedModel;
-      }
-    }
-  }, [webllm, selectedModel]);
+  // Función genérica para manejar cambios en los parámetros del modelo
+  const handleParamChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setModelParams((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : parseFloat(value),
+    }));
+  };
 
+  // Inicializar y descargar el modelo seleccionado
   const initializeWebLLMEngine = async () => {
     try {
       setLoadingStatus("Descargando modelo...");
       setDownloadStatus(`Descargando: ${selectedModel}`);
 
-      // Configuración dinámica con más parámetros
       const config = {
-        temperature,
-        top_p: topP,
-        max_tokens: maxTokens,
-        frequency_penalty: repeatPenaltyEnabled ? frequencyPenalty : null,
-        top_k: topKSampling,
-        min_p: minPSamplingEnabled ? minPSampling : null,
+        temperature: modelParams.temperature,
+        top_p: modelParams.topPSamplingEnabled ? modelParams.topP : undefined,
+        max_tokens: modelParams.maxTokens,
+        frequency_penalty: modelParams.repeatPenaltyEnabled
+          ? modelParams.frequencyPenalty
+          : undefined,
+        top_k: modelParams.topKSampling,
+        min_p: modelParams.minPSamplingEnabled
+          ? modelParams.minPSampling
+          : undefined,
       };
 
       console.log("Iniciando la descarga del modelo:", selectedModel);
-
       await engine.current.reload(selectedModel, config);
 
       setLoadingStatus("Modelo descargado correctamente");
@@ -88,19 +85,19 @@ function App({ webllm }) {
     }
   };
 
+  // Enviar mensaje
   const onMessageSend = () => {
     const input = userInputRef.current.value.trim();
-    if (input.length === 0) return;
+    if (!input) return;
 
     const userMessage = { content: input, role: "user" };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    appendMessage(userMessage);
 
     userInputRef.current.value = "";
     userInputRef.current.placeholder = "Generando...";
 
     const aiMessage = { content: "typing...", role: bot_role };
-    appendMessage(aiMessage);
+    setMessages((prevMessages) => [...prevMessages, aiMessage]);
 
     streamingGenerating(
       [...messages, userMessage],
@@ -110,7 +107,8 @@ function App({ webllm }) {
     );
   };
 
-  async function streamingGenerating(messages, onUpdate, onFinish, onError) {
+  // Generar respuesta del AI de forma streaming
+  const streamingGenerating = async (messages, onUpdate, onFinish, onError) => {
     try {
       let curMessage = "";
       let usage;
@@ -127,67 +125,73 @@ function App({ webllm }) {
         const curDelta = chunk.choices[0]?.delta.content;
         if (curDelta) {
           curMessage += curDelta;
-          onUpdate(curMessage); // Actualiza el mensaje en tiempo real
+          onUpdate(curMessage);
         }
         if (chunk.usage) {
           usage = chunk.usage;
         }
       }
 
-      onFinish(curMessage, usage); // Llamada cuando la generación finaliza
+      onFinish(curMessage, usage);
     } catch (error) {
-      onError(error); // Manejo de errores
+      onError(error);
       console.error("Error durante la generación del mensaje:", error);
     }
-  }
-
-  const appendMessage = (message) => {
-    const chatBox = chatBoxRef.current;
-    const container = document.createElement("div");
-    container.classList.add("message-container");
-
-    const newMessage = document.createElement("div");
-    newMessage.classList.add("message");
-    newMessage.textContent = message.content;
-
-    container.classList.add(message.role === "user" ? "user" : bot_role);
-    container.appendChild(newMessage);
-    chatBox.appendChild(container);
-    chatBox.scrollTop = chatBox.scrollHeight; // Scroll al final del chat
   };
 
+  // Actualizar el último mensaje con el contenido generado
   const updateLastMessage = (content) => {
-    const chatBox = chatBoxRef.current;
-    const messageDoms = chatBox.querySelectorAll(".message");
-    const lastMessageDom = messageDoms[messageDoms.length - 1];
-    lastMessageDom.textContent = content;
+    setMessages((prevMessages) => {
+      const lastIndex = prevMessages.length - 1;
+      const updatedMessages = [...prevMessages];
+      updatedMessages[lastIndex] = { ...updatedMessages[lastIndex], content };
+      return updatedMessages;
+    });
   };
 
+  // Finalizar el mensaje generado
   const finishMessage = (content) => {
     updateLastMessage(content);
-    if (userInputRef.current) {
-      userInputRef.current.placeholder = "Escribe un mensaje...";
-    }
+    userInputRef.current.placeholder = "Escribe un mensaje...";
   };
 
+  // Manejo de errores durante la generación del mensaje
   const handleError = (error) => {
     console.error("Error durante la generación del mensaje:", error);
-    if (userInputRef.current) {
-      userInputRef.current.placeholder = "Error al generar el mensaje";
-    }
+    setMessages((prevMessages) => {
+      const lastIndex = prevMessages.length - 1;
+      const updatedMessages = [...prevMessages];
+      updatedMessages[lastIndex] = {
+        ...updatedMessages[lastIndex],
+        content: "Error al generar el mensaje",
+      };
+      return updatedMessages;
+    });
+    userInputRef.current.placeholder = "Error al generar el mensaje";
   };
 
   return (
-    <div>
+    <div className="app-container">
       <div className="download-container">
         <select
-          ref={modelSelectionRef}
+          value={selectedModel}
           onChange={(e) => setSelectedModel(e.target.value)}
-        ></select>
-        <button id="download" onClick={initializeWebLLMEngine}>
+          className="model-select"
+        >
+          {models.map((model) => (
+            <option key={model.model_id} value={model.model_id}>
+              {model.model_id}
+            </option>
+          ))}
+        </select>
+        <button
+          id="download"
+          onClick={initializeWebLLMEngine}
+          disabled={isModelLoaded}
+        >
           Descargar
         </button>
-        <p>{loadingStatus}</p>
+        <p className="loading-status">{loadingStatus}</p>
       </div>
 
       {/* Mostrar el estado de descarga del modelo */}
@@ -199,100 +203,145 @@ function App({ webllm }) {
       </div>
 
       {/* Controles para ajustar los parámetros del modelo */}
-      <div className="param-container">
-        <label>
-          Temperature:
-          <input
-            type="number"
-            value={temperature}
-            onChange={(e) => setTemperature(parseFloat(e.target.value))}
-            step="0.01"
-            min="0"
-            max="1"
-          />
-        </label>
-        <label>
-          Top P Sampling:
-          <input
-            type="checkbox"
-            checked={topPSamplingEnabled}
-            onChange={(e) => setTopPSamplingEnabled(e.target.checked)}
-          />
-          <input
-            type="number"
-            value={topP}
-            onChange={(e) => setTopP(parseFloat(e.target.value))}
-            step="0.01"
-            min="0"
-            max="1"
-            disabled={!topPSamplingEnabled}
-          />
-        </label>
-        <label>
-          Top K Sampling:
-          <input
-            type="number"
-            value={topKSampling}
-            onChange={(e) => setTopKSampling(parseInt(e.target.value, 10))}
-            min="1"
-            max="100"
-          />
-        </label>
-        <label>
-          Repeat Penalty:
-          <input
-            type="checkbox"
-            checked={repeatPenaltyEnabled}
-            onChange={(e) => setRepeatPenaltyEnabled(e.target.checked)}
-          />
-          <input
-            type="number"
-            value={frequencyPenalty}
-            onChange={(e) => setFrequencyPenalty(parseFloat(e.target.value))}
-            step="0.01"
-            min="1"
-            max="2"
-            disabled={!repeatPenaltyEnabled}
-          />
-        </label>
-        <label>
-          Min P Sampling:
-          <input
-            type="checkbox"
-            checked={minPSamplingEnabled}
-            onChange={(e) => setMinPSamplingEnabled(e.target.checked)}
-          />
-          <input
-            type="number"
-            value={minPSampling}
-            onChange={(e) => setMinPSampling(parseFloat(e.target.value))}
-            step="0.01"
-            min="0"
-            max="1"
-            disabled={!minPSamplingEnabled}
-          />
-        </label>
-        <label>
-          Max Tokens:
-          <input
-            type="number"
-            value={maxTokens}
-            onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
-            min="1"
-            max="1000"
-          />
-        </label>
+      <div className="param-group">
+        <div className="param-container">
+          <label>
+            Temperature:
+            <input
+              type="number"
+              name="temperature"
+              value={modelParams.temperature}
+              onChange={handleParamChange}
+              step="0.01"
+              min="0"
+              max="1"
+            />
+          </label>
+        </div>
+
+        <div className="param-container">
+          <label>
+            Top P Sampling:
+            <div className="checkbox-group">
+              <input
+                type="checkbox"
+                name="topPSamplingEnabled"
+                checked={modelParams.topPSamplingEnabled}
+                onChange={handleParamChange}
+              />
+              <input
+                type="number"
+                name="topP"
+                value={modelParams.topP}
+                onChange={handleParamChange}
+                step="0.01"
+                min="0"
+                max="1"
+                disabled={!modelParams.topPSamplingEnabled}
+              />
+            </div>
+          </label>
+        </div>
+
+        <div className="param-container">
+          <label>
+            Top K Sampling:
+            <input
+              type="number"
+              name="topKSampling"
+              value={modelParams.topKSampling}
+              onChange={handleParamChange}
+              min="1"
+              max="100"
+            />
+          </label>
+        </div>
+
+        <div className="param-container">
+          <label>
+            Repeat Penalty:
+            <div className="checkbox-group">
+              <input
+                type="checkbox"
+                name="repeatPenaltyEnabled"
+                checked={modelParams.repeatPenaltyEnabled}
+                onChange={handleParamChange}
+              />
+              <input
+                type="number"
+                name="frequencyPenalty"
+                value={modelParams.frequencyPenalty}
+                onChange={handleParamChange}
+                step="0.01"
+                min="1"
+                max="2"
+                disabled={!modelParams.repeatPenaltyEnabled}
+              />
+            </div>
+          </label>
+        </div>
+
+        <div className="param-container">
+          <label>
+            Min P Sampling:
+            <div className="checkbox-group">
+              <input
+                type="checkbox"
+                name="minPSamplingEnabled"
+                checked={modelParams.minPSamplingEnabled}
+                onChange={handleParamChange}
+              />
+              <input
+                type="number"
+                name="minPSampling"
+                value={modelParams.minPSampling}
+                onChange={handleParamChange}
+                step="0.01"
+                min="0"
+                max="1"
+                disabled={!modelParams.minPSamplingEnabled}
+              />
+            </div>
+          </label>
+        </div>
+
+        <div className="param-container max-tokens">
+          <label>
+            Max Tokens:
+            <input
+              type="number"
+              name="maxTokens"
+              value={modelParams.maxTokens}
+              onChange={handleParamChange}
+              min="1"
+              max="1000"
+            />
+          </label>
+        </div>
       </div>
 
+      {/* Contenedor del chat */}
       <div className="chat-container">
-        <div ref={chatBoxRef} className="chat-box"></div>
+        <div ref={chatBoxRef} className="chat-box">
+          {messages.map((msg, index) => (
+            <div key={index} className={`message-container ${msg.role}`}>
+              <div className="message">{msg.content}</div>
+            </div>
+          ))}
+        </div>
         <div className="chat-input-container">
           <input
             type="text"
             ref={userInputRef}
             placeholder="Escribe un mensaje..."
+            className="chat-input"
           />
-          <button id="send" onClick={onMessageSend} disabled={!isModelLoaded}>
+          <button
+            id="send"
+            onClick={onMessageSend}
+            disabled={!isModelLoaded}
+            className="send-button"
+          >
             Enviar
           </button>
         </div>
