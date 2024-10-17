@@ -170,6 +170,11 @@ function App({ webllm }) {
     userInputRef.current.placeholder = "Error al generar el mensaje";
   };
 
+  // Función para limpiar el chat
+  const clearMessages = () => {
+    setMessages([{ content: preprompt, role: bot_role }]);
+  };
+
   return (
     <div className="app-container">
       <div className="download-container">
@@ -343,6 +348,9 @@ function App({ webllm }) {
             className="send-button"
           >
             Enviar
+          </button>
+          <button onClick={clearMessages} className="clear-button">
+            Limpiar
           </button>
         </div>
       </div>
