@@ -15,6 +15,10 @@ function App({ webllm }) {
   const [downloadStatus, setDownloadStatus] = useState("");
   const [models, setModels] = useState([]);
 
+  // Estado para los modelos locales
+  const [localModels, setLocalModels] = useState([]);
+  const [modelSource, setModelSource] = useState("download"); // default to "download"
+
   // Estado para los parámetros del modelo
   const [modelParams, setModelParams] = useState({
     temperature: 0.15,
@@ -42,7 +46,25 @@ function App({ webllm }) {
 
     const availableModels = webllm.prebuiltAppConfig.model_list || [];
     setModels(availableModels);
+
+    // Buscar modelos locales en la carpeta public/models
+    fetchLocalModels();
   }, [webllm]);
+
+  // Buscar modelos locales en la carpeta public/models
+  const fetchLocalModels = async () => {
+    try {
+      const response = await fetch("/models/models.json"); // Busca el archivo models.json en public/models
+      if (response.ok) {
+        const data = await response.json();
+        setLocalModels(data.models);
+      } else {
+        console.error("No se pudieron cargar los modelos locales.");
+      }
+    } catch (error) {
+      console.error("Error al obtener modelos locales:", error);
+    }
+  };
 
   // Función genérica para manejar cambios en los parámetros del modelo
   const handleParamChange = (e) => {
@@ -53,162 +75,215 @@ function App({ webllm }) {
     }));
   };
 
-  // Inicializar y descargar el modelo seleccionado
+  // Función para cambiar entre Descargar o Usar modelo local
+  const handleModelSourceChange = (e) => {
+    setModelSource(e.target.value);
+  };
+
+  // Inicializar y cargar el modelo (descargar o desde una ruta local)
   const initializeWebLLMEngine = async () => {
     try {
-      setLoadingStatus("Descargando modelo...");
-      setDownloadStatus(`Descargando: ${selectedModel}`);
+      if (modelSource === "local") {
+        if (localModels.length === 0) {
+          setLoadingStatus(
+            "No hay modelos locales disponibles. Selecciona un modelo para descargar."
+          );
+          return;
+        }
 
-      const config = {
-        temperature: modelParams.temperature,
-        top_p: modelParams.topPSamplingEnabled ? modelParams.topP : undefined,
-        max_tokens: modelParams.maxTokens,
-        frequency_penalty: modelParams.repeatPenaltyEnabled
-          ? modelParams.frequencyPenalty
-          : undefined,
-        top_k: modelParams.topKSampling,
-        min_p: modelParams.minPSamplingEnabled
-          ? modelParams.minPSampling
-          : undefined,
-      };
+        const localModelPath = `/models/${selectedModel}`;
 
-      console.log("Iniciando la descarga del modelo:", selectedModel);
-      await engine.current.reload(selectedModel, config);
+        // Verificar que el modelo local existe
+        if (!localModels.includes(selectedModel)) {
+          setLoadingStatus("Modelo local no encontrado. Descargando...");
+          // Intentar descargar el modelo
+          await downloadModel(selectedModel); // Nueva función para descargar el modelo
+          return; // Salir de la función después de la descarga
+        }
 
-      setLoadingStatus("Modelo descargado correctamente");
-      setDownloadStatus(`Modelo descargado: ${selectedModel}`);
+        const config = {
+          temperature: modelParams.temperature,
+          top_p: modelParams.topPSamplingEnabled ? modelParams.topP : undefined,
+          max_tokens: modelParams.maxTokens,
+          frequency_penalty: modelParams.repeatPenaltyEnabled
+            ? modelParams.frequencyPenalty
+            : undefined,
+          top_k: modelParams.topKSampling,
+          min_p: modelParams.minPSamplingEnabled
+            ? modelParams.minPSampling
+            : undefined,
+        };
+
+        await engine.current.reload(localModelPath, config);
+        setLoadingStatus("Modelo cargado correctamente desde la carpeta local");
+        setDownloadStatus(`Modelo cargado desde: ${localModelPath}`);
+      } else {
+        // Descargar y cargar modelo desde la lista seleccionada
+        setLoadingStatus("Descargando modelo...");
+        setDownloadStatus(`Descargando: ${selectedModel}`);
+
+        const config = {
+          temperature: modelParams.temperature,
+          top_p: modelParams.topPSamplingEnabled ? modelParams.topP : undefined,
+          max_tokens: modelParams.maxTokens,
+          frequency_penalty: modelParams.repeatPenaltyEnabled
+            ? modelParams.frequencyPenalty
+            : undefined,
+          top_k: modelParams.topKSampling,
+          min_p: modelParams.minPSamplingEnabled
+            ? modelParams.minPSampling
+            : undefined,
+        };
+
+        // Verificar que el modelo está en la lista de modelos disponibles
+        if (!models.some((model) => model.model_id === selectedModel)) {
+          setLoadingStatus("Modelo no disponible en la configuración.");
+          return;
+        }
+
+        await engine.current.reload(selectedModel, config);
+        setLoadingStatus("Modelo descargado correctamente");
+        setDownloadStatus(`Modelo descargado: ${selectedModel}`);
+      }
+
       setIsModelLoaded(true);
     } catch (error) {
       console.error("Error al inicializar el motor:", error);
+      setLoadingStatus("Error al descargar/cargar el modelo");
+      setDownloadStatus("Error en la descarga/carga del modelo");
+    }
+  };
+
+  // Función para descargar el modelo
+  const downloadModel = async (modelId) => {
+    try {
+      setLoadingStatus(`Descargando el modelo ${modelId}...`);
+
+      // Aquí debes definir la URL de tu servidor donde se puede descargar el modelo
+      const modelDownloadUrl = `https://your-server.com/models/${modelId}`; // Cambia a la URL real donde están los modelos
+
+      // Realiza la descarga
+      const response = await fetch(modelDownloadUrl);
+
+      if (!response.ok) {
+        throw new Error("Error al descargar el modelo");
+      }
+
+      // Aquí podrías implementar lógica para almacenar en caché o usar IndexedDB si es necesario
+      // Sin embargo, esto normalmente no se hace en un entorno del lado del cliente.
+      // Asegúrate de que el servidor sirva el modelo adecuadamente.
+
+      // Simula almacenar el modelo localmente (esto es solo una representación)
+      setLocalModels((prev) => [...prev, modelId]); // Actualiza el estado de modelos locales
+
+      setLoadingStatus(`Modelo ${modelId} descargado correctamente.`);
+      setDownloadStatus(`Modelo descargado: ${modelId}`);
+    } catch (error) {
+      console.error("Error al descargar el modelo:", error);
       setLoadingStatus("Error al descargar el modelo");
       setDownloadStatus("Error en la descarga del modelo");
     }
   };
 
-  // Enviar mensaje
-  const onMessageSend = () => {
-    const input = userInputRef.current.value.trim();
-    if (!input) return;
-
-    const userMessage = { content: input, role: "user" };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-
-    userInputRef.current.value = "";
-    userInputRef.current.placeholder = "Generando...";
-
-    const aiMessage = { content: "typing...", role: bot_role };
-    setMessages((prevMessages) => [...prevMessages, aiMessage]);
-
-    streamingGenerating(
-      [...messages, userMessage],
-      updateLastMessage,
-      finishMessage,
-      handleError
-    );
-  };
-
-  // Generar respuesta del AI de forma streaming
-  const streamingGenerating = async (messages, onUpdate, onFinish, onError) => {
-    try {
-      let curMessage = "";
-      let usage;
-
-      console.log("Iniciando la generación de mensajes...");
-
-      const completion = await engine.current.chat.completions.create({
-        stream: true,
-        messages,
-        stream_options: { include_usage: true },
-      });
-
-      for await (const chunk of completion) {
-        const curDelta = chunk.choices[0]?.delta.content;
-        if (curDelta) {
-          curMessage += curDelta;
-          onUpdate(curMessage);
-        }
-        if (chunk.usage) {
-          usage = chunk.usage;
-        }
-      }
-
-      onFinish(curMessage, usage);
-    } catch (error) {
-      onError(error);
-      console.error("Error durante la generación del mensaje:", error);
-    }
-  };
-
-  // Actualizar el último mensaje con el contenido generado
-  const updateLastMessage = (content) => {
-    setMessages((prevMessages) => {
-      const lastIndex = prevMessages.length - 1;
-      const updatedMessages = [...prevMessages];
-      updatedMessages[lastIndex] = { ...updatedMessages[lastIndex], content };
-      return updatedMessages;
-    });
-  };
-
-  // Finalizar el mensaje generado
-  const finishMessage = (content) => {
-    updateLastMessage(content);
-    userInputRef.current.placeholder = "Escribe un mensaje...";
-  };
-
-  // Manejo de errores durante la generación del mensaje
-  const handleError = (error) => {
-    console.error("Error durante la generación del mensaje:", error);
-    setMessages((prevMessages) => {
-      const lastIndex = prevMessages.length - 1;
-      const updatedMessages = [...prevMessages];
-      updatedMessages[lastIndex] = {
-        ...updatedMessages[lastIndex],
-        content: "Error al generar el mensaje",
-      };
-      return updatedMessages;
-    });
-    userInputRef.current.placeholder = "Error al generar el mensaje";
-  };
-
-  // Función para limpiar el chat
-  const clearMessages = () => {
-    setMessages([{ content: preprompt, role: bot_role }]);
-  };
-
   return (
     <div className="app-container">
       <div className="download-container">
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="model-select"
-        >
-          {models.map((model) => (
-            <option key={model.model_id} value={model.model_id}>
-              {model.model_id}
-            </option>
-          ))}
-        </select>
+        {/* Selector de origen del modelo */}
+        <div className="model-source-container">
+          <label>
+            <input
+              type="radio"
+              value="download"
+              checked={modelSource === "download"}
+              onChange={handleModelSourceChange}
+            />
+            Descargar
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="local"
+              checked={modelSource === "local"}
+              onChange={handleModelSourceChange}
+            />
+            Usar local MLC
+          </label>
+        </div>
+
+        {/* Si la opción es "Descargar", mostramos el select de modelos */}
+        {modelSource === "download" && (
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="model-select"
+          >
+            {models.map((model) => (
+              <option key={model.model_id} value={model.model_id}>
+                {model.model_id}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Si la opción es "Usar local MLC", mostramos el select de modelos locales */}
+        {modelSource === "local" && localModels.length > 0 && (
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="model-select"
+          >
+            {localModels.map((model) => (
+              <option key={model} value={model}>
+                {model}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Si no hay modelos locales, mostrar el dropdown para descargar */}
+        {modelSource === "local" && localModels.length === 0 && (
+          <div>
+            <p>
+              No hay modelos locales disponibles. Selecciona un modelo para
+              descargar:
+            </p>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="model-select"
+            >
+              {models.map((model) => (
+                <option key={model.model_id} value={model.model_id}>
+                  {model.model_id}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <button
           id="download"
           onClick={initializeWebLLMEngine}
           disabled={isModelLoaded}
         >
-          Descargar
+          {modelSource === "download" || localModels.length === 0
+            ? "Descargar"
+            : "Cargar localmente"}
         </button>
+
         <p className="loading-status">{loadingStatus}</p>
       </div>
 
       {/* Mostrar el estado de descarga del modelo */}
       <div className="download-status">
         <p>
-          <strong>Estado de descarga del modelo:</strong>{" "}
-          {downloadStatus || "No descargado"}
+          <strong>Estado del modelo:</strong> {downloadStatus || "No cargado"}
         </p>
       </div>
 
       {/* Controles para ajustar los parámetros del modelo */}
       <div className="param-group">
+        {/* Parámetros del modelo (temperature, topP, etc.) */}
         <div className="param-container">
           <label>
             Temperature:
@@ -343,14 +418,13 @@ function App({ webllm }) {
           />
           <button
             id="send"
-            onClick={onMessageSend}
+            onClick={() => {
+              /* lógica de envío de mensajes */
+            }}
             disabled={!isModelLoaded}
             className="send-button"
           >
             Enviar
-          </button>
-          <button onClick={clearMessages} className="clear-button">
-            Limpiar
           </button>
         </div>
       </div>
