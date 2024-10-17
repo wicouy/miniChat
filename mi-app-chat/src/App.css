@@ -1,58 +1,108 @@
 /* src/App.css */
 
-.download-container,
-.download-status,
-.param-container,
-.options {
-  margin: 20px;
+/* Variables de Tema */
+:root {
+  --primary-color: #4a90e2;
+  --secondary-color: #dcf8c6;
+  --assistant-color: #f1f0f0;
+  --border-color: #ccc;
+  --font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --transition-speed: 0.3s;
+  --background-color: #f9f9f9;
+  --text-color: #333;
+  --input-bg-color: #fff;
+  --button-hover-color: #3a78c2;
 }
 
-.param-container label,
-.options label {
-  display: block;
-  margin-bottom: 10px;
+/* Reset Básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.chat-container {
-  border: 1px solid #ccc;
-  padding: 10px;
-  height: 400px;
-  overflow-y: scroll;
-  margin: 20px;
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
 }
 
-.message-container {
-  margin-bottom: 10px;
-}
-
-.message {
-  padding: 10px;
-  border-radius: 5px;
-  max-width: 70%;
-}
-
-.user .message {
-  background-color: #dcf8c6;
-  margin-left: auto;
-}
-
-.assistant .message {
-  background-color: #f1f0f0;
-  margin-right: auto;
-}
-
-.chat-input-container {
+/* Contenedor de parámetros */
+.param-group {
   display: flex;
-  margin: 20px;
-}
-
-.chat-input-container input {
-  flex: 1;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
   padding: 10px;
-  font-size: 16px;
+  background-color: #f7f7f7;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
 }
 
-.chat-input-container button {
+/* Cada grupo de parámetros */
+.param-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 200px;
+}
+
+/* Etiquetas y campos */
+.param-container label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.param-container input[type="number"],
+.param-container input[type="text"],
+.param-container select {
+  padding: 8px;
+  margin-top: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color var(--transition-speed);
+}
+
+/* Evitar que "Max Tokens" ocupe todo el ancho */
+.param-container.max-tokens {
+  flex: 0 0 150px;
+}
+
+/* Ajuste para checkboxes y campos de entrada */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+}
+
+/* Botones */
+button {
   padding: 10px 20px;
   font-size: 16px;
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+button:hover {
+  background-color: var(--button-hover-color);
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .param-group {
+    flex-direction: column;
+  }
+
+  .param-container {
+    flex: 1 1 100%;
+  }
 }
